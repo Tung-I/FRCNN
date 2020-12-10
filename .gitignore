@@ -1,0 +1,10 @@
+data/
+models/
+__pycache__/
+lib/build/
+lib/pycocotools/
+lib/faster_rcnn.egg-info
+lib/model/_C*
+output/*
+inference_output/*
+resnet50*.pth

@@ -13,39 +13,56 @@ from __future__ import print_function
 __sets = {}
 from datasets.pascal_voc import pascal_voc
 from datasets.coco import coco
-from datasets.coco_60cat import coco_60cat
+from datasets.coco_split import coco_split
 from datasets.imagenet import imagenet
 from datasets.vg import vg
 from datasets.fsod import fsod
 from datasets.simulated import simulated
 from datasets.episode import episode
+from datasets.ocid import ocid
+from datasets.coco_finetune import coco_finetune
 
 import numpy as np
 
-# coco few-shot evaluate 
-for year in ['part1', 'part2', 'part3', 'part4']:
-  for n in range(10): 
+# coco 20 evaluation
+for year in ['set1', 'set2']:
+  for split in ['3way', '5way']:
+    name = 'coco_{}_{}'.format(split, year)
+    __sets[name] = (lambda split=split, year=year: coco_split(split, year))
+
+# vis
+for year in ['set1', 'set2', 'set3', 'set4']:
+  for split in ['vis']:
+    name = 'coco_{}_{}'.format(split, year)
+    __sets[name] = (lambda split=split, year=year: coco_split(split, year))
+
+# coco 20 evaluation
+for year in ['set1', 'set2', 'set3', 'set4']:
+  for split in ['20']:
+    name = 'coco_{}_{}'.format(split, year)
+    __sets[name] = (lambda split=split, year=year: coco_split(split, year))
+
+# coco 60 training
+for year in ['set1', 'set2', 'set3', 'set4', 'set1allcat']:
+  for split in ['60']:
+    name = 'coco_{}_{}'.format(split, year)
+    __sets[name] = (lambda split=split, year=year: coco_split(split, year))
+
+# episode
+for year in ['novel', 'base', 'val']:
+  for n in range(600): 
     split = 'ep' + str(n)
     name = 'coco_{}_{}'.format(year, split)
     __sets[name] = (lambda split=split, year=year: episode(split, year))
 
-# simulated
-for year in ['2020']:
-  for split in ['train', 'test']:
-    name = 'simulated_' + split
-    __sets[name] = (lambda split=split, year=year: simulated(split, year))
+
+
 
 # Set up voc_<year>_<split>
 for year in ['2007', '2012']:
   for split in ['train', 'val', 'trainval', 'test']:
     name = 'voc_{}_{}'.format(year, split)
     __sets[name] = (lambda split=split, year=year: pascal_voc(split, year))
-
-# Set up coco 60 categories
-for year in ['60']:
-  for split in ['coco']:
-    name = 'coco_{}_{}'.format(year, split)
-    __sets[name] = (lambda split=split, year=year: coco_60cat(split, year))
 
 # Set up coco_2014_<split>
 for year in ['2014']:

@@ -58,14 +58,21 @@ class episode(imdb):
       'captest2014': 'val2014'
     }
     coco_name = image_set + year  # e.g., "val2014"
-    self._data_name = 'val2014'
+    if year == 'val':
+      self._data_name = 'train2014'
+    else:
+      self._data_name = 'val2014'
     # Dataset splits that have ground-truth annotations (test splits
     # do not have gt annotations)
     self._gt_splits = ('train', 'val', 'minival')
 
   def _get_ann_file(self):
-    return osp.join(self._data_path, 'annotations', 'coco20_test',
-                        self._year, self._image_set + '.json')
+    if self._year == 'val':
+      return osp.join(self._data_path, 'annotations', 'coco_val',
+                        self._year + '_' + self._image_set + '.json')
+    else:
+      return osp.join(self._data_path, 'annotations', 'coco_epi',
+                        self._year + '_' + self._image_set + '.json')
 
   def _load_image_set_index(self):
     """
@@ -232,7 +239,8 @@ class episode(imdb):
       # minus 1 because of __background__
       precision = coco_eval.eval['precision'][ind_lo:(ind_hi + 1), :, cls_ind - 1, 0, 2]
       ap = np.mean(precision[precision > -1])
-      print('{:.1f}'.format(100 * ap))
+      # print('{:.1f}'.format(100 * ap))
+      print(f'{cls_ind}: {100 * ap:.2f}')
 
     print('~~~~ Summary metrics ~~~~')
     coco_eval.summarize()

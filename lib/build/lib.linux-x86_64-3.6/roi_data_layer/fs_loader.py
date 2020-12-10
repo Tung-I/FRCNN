@@ -1,4 +1,3 @@
-
 """The data layer used during training to train a Fast R-CNN network.
 """
 import torch.utils.data as data
@@ -79,6 +78,7 @@ class FewShotLoader(data.Dataset):
                     continue 
                 _info = {'roidb_idx': roidb_idx, 'box': box}
                 self.support_db[box_cls_idx].append(_info)
+
 
     def __getitem__(self, index):
         ##############################
