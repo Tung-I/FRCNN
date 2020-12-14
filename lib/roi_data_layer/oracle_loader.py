@@ -52,31 +52,6 @@ class OracleLoader(data.Dataset):
                 target_ratio = 1
             self.ratio_list_batch[left_idx:(right_idx+1)] = target_ratio
 
-        ##############################
-        # prepare few shot support pool
-        ##############################
-        threshold = self.support_size_threshold
-        self.support_db = []  # list[class_idx] = [box_info_1, box_info_2, ...]
-        for i in range(self._num_classes):
-            self.support_db.append([])
-
-        for roidb_idx, _roidb in enumerate(self._roidb):
-            if _roidb['flipped'] == True:
-                continue
-            gt_inds = np.where((_roidb['gt_classes'] != 0) & np.all(_roidb['gt_overlaps'].toarray() > -1.0, axis=1))[0]
-            boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
-            boxes[:, 0:4] = _roidb['boxes'][gt_inds, :]  # note: boxes have not been scaled
-            boxes[:, 4] = _roidb['gt_classes'][gt_inds]
-            for i in range(len(gt_inds)):
-                box = boxes[i, 0:4]
-                box_cls_idx = int(boxes[i, 4])
-                box_w = box[2] - box[0]
-                box_h = box[3] - box[1]
-                if box_w < threshold or box_h < threshold or box_w > 2*box_h or box_h > 2*box_w:
-                    continue 
-                _info = {'roidb_idx': roidb_idx, 'box': box}
-                self.support_db[box_cls_idx].append(_info)
-
     def __getitem__(self, index):
         ##############################
         # in training, for example, the index feed to dataloader may be n1
@@ -95,47 +70,6 @@ class OracleLoader(data.Dataset):
         im_info = torch.from_numpy(blobs['im_info'])  # (H, W, scale)
         data_height, data_width = data.size(1), data.size(2)  # [1, h, w, c]
         gt_boxes = blobs['gt_boxes']
-
-        #################
-        # support data
-        #################
-        target_size = self.support_im_size
-        support_data_all = np.zeros((self.support_way * self.support_shot, 3, target_size, target_size), dtype=np.float32)
-        # positive supports
-        cls_in_query = []
-        for i in range(gt_boxes.shape[0]):
-            _cls = gt_boxes[i, 4]
-            cls_in_query.append(_cls)
-        cls_in_query = list(set(cls_in_query))
-        pos_cls_idx = int(random.sample(cls_in_query, k=1)[0])
-        support_dbs = random.sample(self.support_db[pos_cls_idx], k=self.support_shot)
-        for i, sup_db in enumerate(support_dbs):
-            support_roidb = self._roidb[sup_db['roidb_idx']]
-            support_box = sup_db['box']
-            support_blob = get_minibatch([support_roidb])
-            support_im = support_blob['data'][0]
-            support_im_h, support_im_w = support_im.shape[0], support_im.shape[1]
-            support_scale = support_blob['im_info'][0][2]
-            support_box = (support_box * support_scale).astype(np.int16)
-            support_im_final = np.zeros((3, target_size, target_size), dtype=np.float32)
-            x_min, y_min = support_box[0], support_box[1]
-            x_max, y_max = support_box[2], support_box[3]
-            box_h, box_w = y_max - y_min, x_max - x_min
-            support_im_cropped = support_im[y_min:y_max+1, x_min:x_max+1, :]
-            if box_h > box_w:
-                resize_scale = float(target_size) / float(box_h)
-                unfit_size = int(box_w * resize_scale)
-                support_im_cropped = cv2.resize(support_im_cropped, (unfit_size, target_size), interpolation=cv2.INTER_LINEAR)
-            else:
-                resize_scale = float(target_size) / float(box_w)
-                unfit_size = int(box_h * resize_scale)
-                support_im_cropped = cv2.resize(support_im_cropped, (target_size, unfit_size), interpolation=cv2.INTER_LINEAR)
-
-            cropped_h = support_im_cropped.shape[0]
-            cropped_w = support_im_cropped.shape[1]
-            support_im_final[:, :cropped_h, :cropped_w] = np.transpose(support_im_cropped, (2, 0, 1))
-            support_data_all[i] = support_im_final 
-        support = torch.from_numpy(support_data_all)
     
         #################
         # query data
@@ -243,14 +177,6 @@ class OracleLoader(data.Dataset):
             gt_boxes[:, :4].clamp_(0, trim_size)
             im_info[0, 0] = trim_size
             im_info[0, 1] = trim_size
-
-        # filt boxes
-        fs_gt_boxes = []
-        for i in range(gt_boxes.shape[0]):
-            if gt_boxes[i, 4] == pos_cls_idx:
-                fs_gt_boxes += [gt_boxes[i]]
-        fs_gt_boxes = torch.stack(fs_gt_boxes, 0)
-        fs_gt_boxes[:, 4] = 1.
        
         # check the bounding box:
         not_keep = (gt_boxes[:,0] == gt_boxes[:,2]) | (gt_boxes[:,1] == gt_boxes[:,3])
@@ -264,18 +190,6 @@ class OracleLoader(data.Dataset):
         else:
             num_boxes = 0
 
-        #
-        not_keep = (fs_gt_boxes[:,0] == fs_gt_boxes[:,2]) | (fs_gt_boxes[:,1] == fs_gt_boxes[:,3])
-        keep = torch.nonzero(not_keep == 0).view(-1)
-
-        fs_gt_boxes_padding = torch.FloatTensor(self.max_num_box, fs_gt_boxes.size(1)).zero_()
-        if keep.numel() != 0:
-            fs_gt_boxes = fs_gt_boxes[keep]
-            num_boxes = min(fs_gt_boxes.size(0), self.max_num_box)
-            fs_gt_boxes_padding[:num_boxes,:] = fs_gt_boxes[:num_boxes]
-        else:
-            num_boxes = 0
-
         # permute trim_data to adapt to downstream processing
         padding_data = padding_data.permute(2, 0, 1).contiguous()
         im_info = im_info.view(3)
@@ -284,7 +198,7 @@ class OracleLoader(data.Dataset):
         # to sum up, data in diffenent batches may have different size, 
         # but will have same size in the same batch
 
-        return padding_data, im_info, fs_gt_boxes_padding, num_boxes, support_data_all, gt_boxes_padding
+        return padding_data, im_info, gt_boxes_padding, num_boxes
         
 
     def __len__(self):

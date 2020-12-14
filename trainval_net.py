@@ -26,6 +26,7 @@ from model.framework.fsod import FSOD
 from model.framework.meta import METARCNN
 from model.framework.fgn import FGN
 from model.framework.dana import DAnARCNN
+from model.framework.cisa import CISARCNN
 
 
 def parse_args():
@@ -68,7 +69,7 @@ def parse_args():
                         default=16, type=int)
     parser.add_argument('--fs', dest='few_shot',
                         help='whether under the few-shot paradigm',
-                        action='store_true')
+                        default=False, action='store_true')
 
     # config optimization
     parser.add_argument('--o', dest='optimizer',
@@ -139,6 +140,8 @@ if __name__ == '__main__':
         raise Exception('dataset not defined')
 
     args.cfg_file = "cfgs/res50.yml"
+    cfg_from_file(args.cfg_file)
+    cfg_from_list(args.set_cfgs)
 
     # make results determinable
     np.random.seed(cfg.RNG_SEED)
@@ -202,6 +205,8 @@ if __name__ == '__main__':
         model = METARCNN(imdb.classes, pretrained=True, num_way=args.way, num_shot=args.shot)
     elif args.net == 'fgn':
         model = FGN(imdb.classes, pretrained=True, num_way=args.way, num_shot=args.shot)
+    elif args.net == 'cisa':
+        model = CISARCNN(imdb.classes, 'concat', 256, 256, pretrained=True, num_way=args.way, num_shot=args.shot)
     else:
         raise Exception(f"network {args.net} is not defined")
 
@@ -248,7 +253,7 @@ if __name__ == '__main__':
     # training
     iters_per_epoch = int(train_size / args.batch_size)
     for epoch in range(args.start_epoch, args.max_epochs + 1):
-        fasterRCNN.train()
+        model.train()
         loss_temp = 0
         start = time.time()
 
@@ -266,13 +271,18 @@ if __name__ == '__main__':
                 num_boxes.resize_(data[3].size()).copy_(data[3])
                 if args.few_shot:
                     support_ims.resize_(data[4].size()).copy_(data[4])
-
             model.zero_grad()
 
-            rois, cls_prob, bbox_pred, \
-            rpn_loss_cls, rpn_loss_box, \
-            RCNN_loss_cls, RCNN_loss_bbox, \
-            rois_label = model(im_data, im_info, gt_boxes, num_boxes, support_ims)
+            if args.few_shot:
+                rois, cls_prob, bbox_pred, \
+                rpn_loss_cls, rpn_loss_box, \
+                RCNN_loss_cls, RCNN_loss_bbox, \
+                rois_label = model(im_data, im_info, gt_boxes, num_boxes, support_ims)
+            else:
+                rois, cls_prob, bbox_pred, \
+                rpn_loss_cls, rpn_loss_box, \
+                RCNN_loss_cls, RCNN_loss_bbox, \
+                rois_label = model(im_data, im_info, gt_boxes, num_boxes)
 
             # loss and loss.mean() are the same here
             loss = rpn_loss_cls.mean() + rpn_loss_box.mean() \
@@ -283,7 +293,7 @@ if __name__ == '__main__':
             optimizer.zero_grad()
             loss.backward()
             if args.net == "vgg16":
-                clip_gradient(fasterRCNN, 10.)
+                clip_gradient(model, 10.)
             optimizer.step()
 
             if step % args.disp_interval == 0:
@@ -306,8 +316,8 @@ if __name__ == '__main__':
                     fg_cnt = torch.sum(rois_label.data.ne(0))
                     bg_cnt = rois_label.data.numel() - fg_cnt
 
-                print("[session %d][epoch %2d][iter %4d/%4d] loss: %.4f, lr: %.2e" \
-                                        % (args.session, epoch, step, iters_per_epoch, loss_temp, lr))
+                print("[epoch %2d][iter %4d/%4d] loss: %.4f, lr: %.2e" \
+                                        % (epoch, step, iters_per_epoch, loss_temp, lr))
                 print("\t\t\tfg/bg=(%d/%d), time cost: %f" % (fg_cnt, bg_cnt, end-start))
                 print("\t\t\trpn_cls: %.4f, rpn_box: %.4f, rcnn_cls: %.4f, rcnn_box %.4f" \
                             % (loss_rpn_cls, loss_rpn_box, loss_rcnn_cls, loss_rcnn_box))
