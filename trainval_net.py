@@ -340,7 +340,6 @@ if __name__ == '__main__':
             'model': model.module.state_dict() if args.mGPUs else model.state_dict(),
             'optimizer': optimizer.state_dict(),
             'pooling_mode': cfg.POOLING_MODE,
-            'class_agnostic': args.class_agnostic,
         }, save_name)
         print('save model: {}'.format(save_name))
 
