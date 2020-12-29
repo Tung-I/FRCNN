@@ -16,10 +16,10 @@ from model.utils.net_utils import _smooth_l1_loss, _crop_pool_layer, _affine_gri
 from model.framework.resnet import resnet50
 
 
-class _CISARCNN(nn.Module):
+class _MAML_CISA(nn.Module):
     """ Dual Awareness Attention Faster R-CNN """
     def __init__(self, classes, attention_type, rpn_reduce_dim, rcnn_reduce_dim, n_way=2, n_shot=5, pos_encoding=True):
-        super(_CISARCNN, self).__init__()
+        super(_MAML_CISA, self).__init__()
         self.classes = classes
         self.n_classes = len(classes)
         self.n_way = n_way
@@ -278,6 +278,22 @@ class _CISARCNN(nn.Module):
         return bbox_pred, cls_prob, cls_score
 
 
+class MAML_FFN(nn.Module):
+    def __init__(self, in_channel, hidden, drop_prob=0.1):
+        super(FFN, self).__init__()
+        self.linear1 = nn.Linear(in_channel, hidden)
+        self.linear2 = nn.Linear(hidden, 2)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+
+        
+        x = self.linear1(x)
+        x = self.relu(x)
+        x = self.linear2(x)
+        return x
+
+
 class FFN(nn.Module):
     def __init__(self, in_channel, hidden, drop_prob=0.1):
         super(FFN, self).__init__()
@@ -310,12 +326,12 @@ class PositionalEncoding(nn.Module):
         return x
 
 
-class CISARCNN(_CISARCNN):
+class MAML_CISA(MAML_CISA):
     def __init__(self, classes, attention_type, rpn_reduce_dim=256, rcnn_reduce_dim=256, num_layers=50, pretrained=False, num_way=2, num_shot=5, pos_encoding=True):
         self.model_path = 'data/pretrained_model/resnet50_caffe.pth'
         self.dout_base_model = 1024
         self.pretrained = pretrained
-        _CISARCNN.__init__(self, classes, attention_type, rpn_reduce_dim, rcnn_reduce_dim, n_way=num_way, n_shot=num_shot, pos_encoding=pos_encoding)
+        MAML_CISA.__init__(self, classes, attention_type, rpn_reduce_dim, rcnn_reduce_dim, n_way=num_way, n_shot=num_shot, pos_encoding=pos_encoding)
 
     def _init_modules(self):
         resnet = resnet50()

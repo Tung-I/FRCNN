@@ -67,18 +67,8 @@ def parse_args():
     parser.add_argument('--bs', dest='batch_size',
                         help='batch_size',
                         default=16, type=int)
-
     parser.add_argument('--fs', dest='few_shot',
                         help='whether under the few-shot paradigm',
-                        default=True)
-    parser.add_argument('--way', dest='way',
-                        help='num of support way',
-                        default=2, type=int)
-    parser.add_argument('--shot', dest='shot',
-                        help='num of support shot',
-                        default=5, type=int)
-    parser.add_argument('--flip', dest='use_flip',
-                        help='use flipped data or not',
                         default=False, action='store_true')
 
     # config optimization
@@ -109,6 +99,16 @@ def parse_args():
                         help='checkpoint to load model',
                         default=0, type=int)
 
+    # ablation
+    parser.add_argument('--way', dest='way',
+                        help='num of support way',
+                        default=2, type=int)
+    parser.add_argument('--shot', dest='shot',
+                        help='num of support shot',
+                        default=5, type=int)
+    parser.add_argument('--flip', dest='use_flip',
+                        help='use flipped data or not',
+                        default=False, action='store_true')
 
     args = parser.parse_args()
     return args
