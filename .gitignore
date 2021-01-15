@@ -1,6 +1,9 @@
 data/
 models/
 __pycache__/
+lib/datasets/__pycache__/*
+lib/model/utils/__pycache__/*
+lib/roi_data_layer/__pycache__/*
 lib/build/
 lib/pycocotools/
 lib/faster_rcnn.egg-info
