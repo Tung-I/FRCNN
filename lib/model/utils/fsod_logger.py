@@ -8,13 +8,11 @@ from torchvision.utils import make_grid
 class FSODInferenceLogger:
     def __init__(self, log_dir):
         self.writer = SummaryWriter(log_dir)
-        self.save_step = 0
 
-    def write(self, gt, support, predict, save_im=False):
+    def write(self, save_step, gt, support, predict, save_im=False):
         # self._add_scalars(save_step, train_log)
-        self.save_step += 1
         if save_im:
-            self._add_images(self.save_step, gt, support, predict)
+            self._add_images(save_step, gt, support, predict)
   
     def close(self):
         """Close the writer.

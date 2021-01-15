@@ -14,6 +14,7 @@ from tqdm import tqdm
 from roi_data_layer.roidb import combined_roidb
 from roi_data_layer.fs_loader import FewShotLoader, sampler
 from roi_data_layer.oracle_loader import OracleLoader
+from roi_data_layer.finetune_loader import FinetuneLoader
 
 from model.utils.config import cfg, cfg_from_file, cfg_from_list, get_output_dir
 from model.utils.net_utils import weights_normal_init, save_net, load_net, \
@@ -80,8 +81,17 @@ def parse_args():
     parser.add_argument('--flip', dest='use_flip',
                         help='use flipped data or not',
                         default=False, action='store_true')
+    parser.add_argument('--ft', dest='finetune',
+                        help='finetune mode',
+                        default=False, action='store_true')
+    parser.add_argument('--lsi', dest='log_save_im',
+                        help='save im in logger',
+                        default=False, action='store_true')
+    parser.add_argument('--sp_dir', dest='support_dir',
+                        help='directory of support images',
+                        default='all', type=str)
 
-    # config optimization
+    # optimization
     parser.add_argument('--o', dest='optimizer',
                         help='training optimizer',
                         default="sgd", type=str)
@@ -136,6 +146,12 @@ if __name__ == '__main__':
         args.imdb_name = "voc_2007_trainval+voc_2012_trainval"
         args.imdbval_name = "voc_2007_test"
         args.set_cfgs = ['ANCHOR_SCALES', '[4, 8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]', 'MAX_NUM_GT_BOXES', '50']
+    elif args.dataset == "ycb2d":
+        args.imdb_name = "ycb2d_train"
+        args.set_cfgs = ['ANCHOR_SCALES', '[4, 8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]', 'MAX_NUM_GT_BOXES', '50']
+    elif args.dataset == "ycb2d_iter":
+        args.imdb_name = "ycb2d_iter"
+        args.set_cfgs = ['ANCHOR_SCALES', '[4, 8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]', 'MAX_NUM_GT_BOXES', '50']
     else:
         raise Exception('dataset not defined')
 
@@ -166,6 +182,11 @@ if __name__ == '__main__':
     if not args.few_shot:
         dataset = OracleLoader(roidb, ratio_list, ratio_index, args.batch_size, \
                             imdb.num_classes, training=True)
+    elif args.finetune:
+        CWD = os.getcwd()
+        support_dir = os.path.join(CWD, 'data/supports', args.support_dir)
+        dataset = FinetuneLoader(imdb, roidb, ratio_list, ratio_index, args.batch_size, \
+                            imdb.num_classes, support_dir, training=True, num_shot=args.shot)
     else:
         dataset = FewShotLoader(roidb, ratio_list, ratio_index, args.batch_size, \
                             imdb.num_classes, training=True, num_way=args.way, num_shot=args.shot)
@@ -330,7 +351,7 @@ if __name__ == '__main__':
                 loss_temp = 0
                 start = time.time()
                 
-        tb_logger.write(epoch, info, im_data, support_ims, gt_boxes)
+        tb_logger.write(epoch, info, im_data, support_ims, gt_boxes, save_im=args.log_save_im)
 
         save_name = os.path.join(output_dir, 'model_{}_{}.pth'.format(epoch, step))
         save_checkpoint({

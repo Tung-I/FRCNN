@@ -1,5 +1,3 @@
-"""The data layer used during training to train a Fast R-CNN network.
-"""
 import torch.utils.data as data
 import torch
 import numpy as np
