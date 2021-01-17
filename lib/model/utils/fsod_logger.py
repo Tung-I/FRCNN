@@ -39,7 +39,7 @@ class FSODLogger:
         self.writer = SummaryWriter(log_dir)
         self.train_shot = train_shot
 
-    def write(self, save_step, train_log, query, support, boxes, save_im=False):
+    def write(self, save_step, train_log, query=None, support=None, boxes=None, save_im=False):
         self._add_scalars(save_step, train_log)
         if save_im:
             self._add_images(save_step, query, support, boxes)

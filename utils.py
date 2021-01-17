@@ -65,6 +65,9 @@ def parse_args():
     if args.dataset == "pascal_voc":
         args.imdb_name = "voc_2007_trainval"
         args.imdbval_name = "voc_2007_test"
+    elif args.dataset == "pascal_voc_0712":
+        args.imdb_name = "voc_2007_trainval+voc_2012_trainval"
+        args.imdbval_name = "voc_2007_test"
     elif args.dataset == "coco":
         args.imdb_name = "coco_2014_train"
         args.imdbval_name = "coco_2014_minival"

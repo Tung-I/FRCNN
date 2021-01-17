@@ -204,7 +204,7 @@ if __name__ == '__main__':
                 loss_temp = 0
                 start_time = time.time()
         if not args.dlog:
-            tb_logger.write(epoch, info, im_data, support_ims, gt_boxes, save_im=args.imlog)
+            tb_logger.write(epoch, info, save_im=args.imlog)
 
         save_name = os.path.join(output_dir, 'model_{}_{}.pth'.format(epoch, step))
         save_checkpoint({
