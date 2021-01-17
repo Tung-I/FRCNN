@@ -25,7 +25,7 @@ from model.framework.meta import METARCNN
 from model.framework.fgn import FGN
 from model.framework.dana import DAnARCNN
 from model.framework.cisa import CISARCNN
-import utils
+from utils import *
 
 
 def support_im_preprocess(im_list, cfg, support_im_size):
@@ -93,7 +93,7 @@ def run_detection(sp_im, q_im, model):
     support_data = support_im_preprocess([sp_im], cfg, 320)
     query_data, im_info, gt_boxes, num_boxes = query_im_preprocess(q_im, cfg)
     data = [query_data, im_info, gt_boxes, num_boxes, support_data]
-    im_data, im_info, num_boxes, gt_boxes, support_ims = utils.prepare_var()
+    im_data, im_info, num_boxes, gt_boxes, support_ims = prepare_var(support=True)
     with torch.no_grad():
         im_data.resize_(data[0].size()).copy_(data[0])
         im_info.resize_(data[1].size()).copy_(data[1])
@@ -126,7 +126,7 @@ def run_detection(sp_im, q_im, model):
     inds = torch.nonzero(scores[:,1]>thresh).view(-1)
     cls_scores = scores[:,1][inds]
     cls_boxes = pred_boxes[inds, :]
-    cls_dets = utils.NMS(cls_boxes, cls_scores)
+    cls_dets = NMS(cls_boxes, cls_scores)
 
     return cls_dets
 
@@ -159,19 +159,26 @@ def filt_boxes(dets, cls, im_size):
 
 if __name__ == '__main__':
 
-    args = utils.get_args('inference_one')
+    args = parse_args()
 
-    cfg_from_list(['ANCHOR_SCALES', '[4, 8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]'])
+    model = get_model(args.net, pretrained=False, way=1, shot=1, eval=True, classes=['fg', 'bg'])
     checkpoint_dir = os.path.join(args.load_dir, "train/checkpoints")
     if not os.path.exists(checkpoint_dir):
         raise Exception('There is no input directory for loading network from ' + checkpoint_dir)
     load_path = os.path.join(checkpoint_dir,
         'model_{}_{}.pth'.format(args.checkepoch, args.checkpoint))
-    model = utils.get_model(args.net, pretrained=False, way=1, shot=1, load_path=load_path, eval=True)
+
+    print("load checkpoint %s" % (load_path))
+    checkpoint = torch.load(load_path)
+    model.load_state_dict(checkpoint['model'])
+    if 'pooling_mode' in checkpoint.keys():
+        cfg.POOLING_MODE = checkpoint['pooling_mode']
+    print('load model successfully!')
+
     
     cls_names = ['cube', 'can', 'box', 'bottle']
-    cls_im_inds = [list(range(1000, 1010)), list(range(1010, 1020)), list(range(1020, 1030)), list(range(1030, 1040))]
-    output_dir = os.path.join('/home/tony/YCB_simulation/output', args.o_dir)
+    cls_im_inds = [list(range(1000, 1020)), list(range(1020, 1040)), list(range(1040, 1060)), list(range(1060, 1080))]
+    output_dir = os.path.join('/home/tony/YCB_simulation/output', args.output_dir)
     im_dir = '/home/tony/YCB_simulation/query/images'
     for cls, inds in zip(cls_names, cls_im_inds):
         flag = True
@@ -186,4 +193,4 @@ if __name__ == '__main__':
                 q_im = np.asarray(Image.open(q_im_path))[:, :, :3]
                 im2show = utils.plot_box(q_im, dets, thres=0.)
                 cv2.imwrite(os.path.join(output_dir, str(ind).zfill(6)+'.jpg'), im2show[:, :, ::-1])
-                flag=False
+                flag = False
