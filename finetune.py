@@ -52,18 +52,8 @@ if __name__ == '__main__':
     cfg.TRAIN.USE_FLIPPED = args.use_flip
     cfg.USE_GPU_NMS = True
     imdb, roidb, ratio_list, ratio_index = combined_roidb(args.imdb_name)
-
-    if not args.fewshot:
-        dataset = OracleLoader(roidb, ratio_list, ratio_index, args.batch_size, \
+    dataset = OracleLoader(roidb, ratio_list, ratio_index, args.batch_size, \
                             imdb.num_classes, training=True)
-    elif args.finetune:
-        CWD = os.getcwd()
-        support_dir = os.path.join(CWD, 'data/supports', args.support_dir)
-        dataset = FinetuneLoader(imdb, roidb, ratio_list, ratio_index, args.batch_size, \
-                            imdb.num_classes, support_dir, training=True, num_shot=args.shot)
-    else:
-        dataset = FewShotLoader(roidb, ratio_list, ratio_index, args.batch_size, \
-                            imdb.num_classes, training=True, num_way=args.way, num_shot=args.shot)
     train_size = len(roidb)
     print('{:d} roidb entries'.format(len(roidb)))
     sampler_batch = sampler(train_size, args.batch_size)
@@ -76,16 +66,22 @@ if __name__ == '__main__':
     im_info = holders[1]
     num_boxes = holders[2]
     gt_boxes = holders[3]
-    if args.fewshot:
-        support_ims = holders[4]
 
     # initilize the network
-    pre_weight = False if args.finetune or args.resume else True
-    classes = imdb.classes if not args.fewshot else ['fg', 'bg']
-    model = get_model(args.net, pretrained=pre_weight, way=args.way, shot=args.shot, classes=classes)
+    model = get_model('frcnn', pretrained=False, way=0, shot=0, eval=False, classes=list(range(args.old_n_classes)))
+
+    # load checkpoints 
+    load_dir = os.path.join(args.load_dir, "train/checkpoints")
+    load_name = os.path.join(load_dir, f'model_{args.checkepoch}_{args.checkpoint}.pth')
+    checkpoint = torch.load(load_name)
+    args.start_epoch = checkpoint['epoch']
+    model.load_state_dict(checkpoint['model'])
+    if 'pooling_mode' in checkpoint.keys():
+        cfg.POOLING_MODE = checkpoint['pooling_mode']
+    print(f'loaded checkpoint: {load_name}')
 
     # optimizer
-    lr = cfg.TRAIN.LEARNING_RATE
+    model.finetune(len(imdb.classes))
     lr = args.lr
     params = []
     for key, value in dict(model.named_parameters()).items():
@@ -99,19 +95,6 @@ if __name__ == '__main__':
         optimizer = torch.optim.Adam(params)
     elif args.optimizer == "sgd":
         optimizer = torch.optim.SGD(params, momentum=cfg.TRAIN.MOMENTUM)
-
-    # load checkpoints 
-    if args.resume:
-        load_dir = os.path.join(args.load_dir, "train/checkpoints")
-        load_name = os.path.join(load_dir, f'model_{args.checkepoch}_{args.checkpoint}.pth')
-        checkpoint = torch.load(load_name)
-        args.start_epoch = checkpoint['epoch']
-        model.load_state_dict(checkpoint['model'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        lr = optimizer.param_groups[0]['lr']
-        if 'pooling_mode' in checkpoint.keys():
-            cfg.POOLING_MODE = checkpoint['pooling_mode']
-        print(f'loaded checkpoint: {load_name}')
 
     if args.mGPUs:
         model = nn.DataParallel(model)
@@ -207,5 +190,3 @@ if __name__ == '__main__':
             'pooling_mode': cfg.POOLING_MODE,
         }, save_name)
         print('save model: {}'.format(save_name))
-
-

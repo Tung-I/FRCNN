@@ -35,9 +35,11 @@ def parse_args():
     parser.add_argument('--ascale', dest='ascale', help='number of anchor scale', default=4, type=int)
     parser.add_argument('--ft', dest='finetune', help='finetune mode', default=False, action='store_true')
     parser.add_argument('--eval', dest='eval', help='evaluation mode', default=False, action='store_true')
+    parser.add_argument('--onc', dest='old_n_classes', help='number of classes of the source domain', default=81, type=int)
     # inference one by one
     parser.add_argument('--thres', dest='thres', help='threshold of score', default=0.5, type=float)
-    parser.add_argument('--o_dir', dest='output_dir', help='output_dir', default=None, type=str)
+    parser.add_argument('--pl_dir', dest='pl_dir', help='output directory of pseudo labels', default=None, type=str)
+    parser.add_argument('--eval_dir', dest='eval_dir', help='output directory of evaluation', default=None, type=str)
     # few shot
     parser.add_argument('--fs', dest='fewshot', help='few-shot setting', default=False, action='store_true')
     parser.add_argument('--way', dest='way', help='num of support way', default=2, type=int)
@@ -76,21 +78,25 @@ def parse_args():
         args.imdbval_name = "coco_2014_minival"
     elif args.dataset == "set1":
         args.imdb_name = "coco_60_set1"
-    elif args.dataset == "set1_all_cat":
-        args.imdb_name = "coco_60_set1allcat"
     elif args.dataset == "0712":
         args.imdb_name = "voc_2007_trainval+voc_2012_trainval"
         args.imdbval_name = "voc_2007_test"
-    elif args.dataset == "ycb2d":
-        args.imdb_name = "ycb2d_train"
-    elif args.dataset == "ycb2d_iter":
-        args.imdb_name = "ycb2d_iter"
+    elif args.dataset == "val2014_novel":
+        args.imdbval_name = "coco_20_set1"
+    elif args.dataset == "val2014_base":
+        args.imdbval_name = "coco_20_set2"
+    elif args.dataset == "ycb2d_ft":
+        args.imdb_name = "ycb2d_finetune"
+    elif args.dataset == "ycb2d_pseudo":
+        args.imdb_name = "ycb2d_pseudo"
+    elif args.dataset == 'ycb2d':
+        args.imdbval_name = "ycb2d_inference"
     else:
         raise Exception(f'dataset {args.dataset} not defined')
     args.cfg_file = "cfgs/res50.yml"
     return args
 
-def get_model(name, pretrained=True, way=2, shot=3, eval=False, classes=[]):
+def get_model(name, pretrained=True, way=2, shot=3, classes=[]):
     if name == 'frcnn':
         model = FasterRCNN(classes, pretrained=pretrained)
     elif name == 'fsod':
@@ -104,9 +110,9 @@ def get_model(name, pretrained=True, way=2, shot=3, eval=False, classes=[]):
     else:
         raise Exception(f"network {name} is not defined")
     model.create_architecture()
-    model.cuda()
-    if eval:
-        model.eval()
+    # model.cuda()
+    # if eval:
+    #     model.eval()
     return model
 
 

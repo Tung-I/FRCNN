@@ -10,19 +10,16 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 from tqdm import tqdm
-
 from roi_data_layer.roidb import combined_roidb
 from roi_data_layer.fs_loader import FewShotLoader, sampler
 from roi_data_layer.oracle_loader import OracleLoader
 from roi_data_layer.finetune_loader import FinetuneLoader
-
 from model.utils.config import cfg, cfg_from_file, cfg_from_list, get_output_dir
 from model.utils.net_utils import weights_normal_init, save_net, load_net, \
       adjust_learning_rate, save_checkpoint, clip_gradient
-
 from model.utils.fsod_logger import FSODLogger
-
 from utils import *
+from pycocotools.coco import COCO
 
 
 if __name__ == '__main__':
@@ -82,7 +79,7 @@ if __name__ == '__main__':
     # initilize the network
     pre_weight = False if args.finetune or args.resume else True
     classes = imdb.classes if not args.fewshot else ['fg', 'bg']
-    model = get_model(args.net, pretrained=pre_weight, way=args.way, shot=args.shot, classes=classes)
+    model = get_model(args.net, pretrained=pre_weight, way=args.way, shot=args.shot, eval=False, classes=classes)
 
     # optimizer
     lr = cfg.TRAIN.LEARNING_RATE

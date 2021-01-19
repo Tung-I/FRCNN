@@ -11,15 +11,12 @@ from datasets.vg import vg
 from datasets.episode import episode
 from datasets.ycb2d import ycb2d
 
-
-name = 'ycb2d_train'
-__sets[name] = (lambda split='train', year='30': ycb2d(split, year))
 name = 'ycb2d_inference'
 __sets[name] = (lambda split='inference', year='50': ycb2d(split, year))
-name = 'ycb2d_dense_inference'
-__sets[name] = (lambda split='dense_inference', year='4': ycb2d(split, year))
-name = 'ycb2d_iter'
-__sets[name] = (lambda split='iter', year='11': ycb2d(split, year))
+name = 'ycb2d_finetune'
+__sets[name] = (lambda split='finetune', year='20': ycb2d(split, year))
+name = 'ycb2d_psudo'
+__sets[name] = (lambda split='pseudo', year='20': ycb2d(split, year))
 
 # coco 20 evaluation
 for year in ['set1', 'set2']:

@@ -188,3 +188,15 @@ class FasterRCNN(_fasterRCNN):
     def _head_to_tail(self, pool5):
         fc7 = self.RCNN_top(pool5).mean(3).mean(2)  # [128, 2048]
         return fc7
+
+    def finetune(self, n_classes):
+        for param in self.parameters():
+            print(param)
+            param.requires_grad = False
+        raise Exception(' ')
+        self.RCNN_bbox_pred = nn.Linear(2048, 4)
+        self.RCNN_cls_score = nn.Linear(2048, n_classes)
+        self.RCNN_bbox_pred.weight.data.normal_(0, 0.001)
+        self.RCNN_bbox_pred.bias.data.zero_()
+        self.RCNN_cls_score.weight.data.normal_(0, 0.01)
+        self.RCNN_cls_score.bias.data.zero_()

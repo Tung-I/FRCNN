@@ -12,9 +12,8 @@ from roi_data_layer.minibatch import get_minibatch, get_minibatch
 
 
 class GeneralTestLoader(data.Dataset):
-    def __init__(self, roidb, ratio_list, ratio_index, batch_size, num_classes, training=True, normalize=None):
+    def __init__(self, roidb, ratio_list, ratio_index, batch_size, training=True, normalize=None):
         self._roidb = roidb
-        self._num_classes = num_classes
         # we make the height of image consistent to trim_height, trim_width
         self.trim_height = cfg.TRAIN.TRIM_HEIGHT
         self.trim_width = cfg.TRAIN.TRIM_WIDTH
