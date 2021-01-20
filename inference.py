@@ -33,7 +33,7 @@ if __name__ == '__main__':
     cfg.TRAIN.USE_FLIPPED = False
     imdb, roidb, ratio_list, ratio_index = combined_roidb(args.imdbval_name, False)
     CWD = os.getcwd()
-    support_dir = os.path.join(CWD, 'data/supports', args.support_dir)
+    support_dir = os.path.join(CWD, 'data/supports', args.sup_dir)
 
     # load dir
     input_dir = os.path.join(args.load_dir, "train/checkpoints")
@@ -146,12 +146,8 @@ if __name__ == '__main__':
                 inds = torch.nonzero(scores[:,1]>thresh).view(-1)
                 if inds.numel() > 0:
                     cls_scores = scores[:,1][inds]
-                    _, order = torch.sort(cls_scores, 0, True)
                     cls_boxes = pred_boxes[inds, :]
-                    cls_dets = torch.cat((cls_boxes, cls_scores.unsqueeze(1)), 1)
-                    cls_dets = cls_dets[order]
-                    keep = nms(cls_boxes[order, :], cls_scores[order], cfg.TEST.NMS)
-                    cls_dets = cls_dets[keep.view(-1).long()]
+                    cls_dets = NMS(cls_boxes, cls_scores)
                     all_boxes[j][i] = cls_dets.cpu().numpy()
                 else:
                     all_boxes[j][i] = empty_array
@@ -160,12 +156,8 @@ if __name__ == '__main__':
                 inds = torch.nonzero(scores[:,j]>thresh).view(-1)
                 if inds.numel() > 0:
                     cls_scores = scores[:,j][inds]
-                    _, order = torch.sort(cls_scores, 0, True)
                     cls_boxes = pred_boxes[inds, :]
-                    cls_dets = torch.cat((cls_boxes, cls_scores.unsqueeze(1)), 1)
-                    cls_dets = cls_dets[order]
-                    keep = nms(cls_boxes[order, :], cls_scores[order], cfg.TEST.NMS)
-                    cls_dets = cls_dets[keep.view(-1).long()]
+                    cls_dets = NMS(cls_boxes, cls_scores)
                     all_boxes[j][i] = cls_dets.cpu().numpy()
                 else:
                     all_boxes[j][i] = empty_array

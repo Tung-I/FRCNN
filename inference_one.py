@@ -161,7 +161,9 @@ if __name__ == '__main__':
 
     args = parse_args()
 
-    model = get_model(args.net, pretrained=False, way=1, shot=1, eval=True, classes=['fg', 'bg'])
+    model = get_model(args.net, pretrained=False, way=1, shot=1, classes=['fg', 'bg'])
+    model.cuda()
+    model.eval()
     checkpoint_dir = os.path.join(args.load_dir, "train/checkpoints")
     if not os.path.exists(checkpoint_dir):
         raise Exception('There is no input directory for loading network from ' + checkpoint_dir)

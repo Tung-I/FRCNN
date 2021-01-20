@@ -21,12 +21,17 @@ from model.utils.fsod_logger import FSODLogger
 from utils import *
 from pycocotools.coco import COCO
 
+CWD = os.getcwd()
+
+cls_names = ['cube', 'can', 'box', 'bottle']
+ann_dir = '/home/tony/YCB_simulation/query/ndarray'
+cls_im_inds = [list(range(1000, 1020)), list(range(1020, 1040)), list(range(1040, 1060)), list(range(1060, 1080))]
+dump_path = '/home/tony/datasets/YCB2D/annotations/instances_pseudo20.json'
 
 if __name__ == '__main__':
 
     args = parse_args()
     print(args)
-
     cfg_from_file(args.cfg_file)
     cfg_from_list(args.set_cfgs)
 
@@ -50,17 +55,10 @@ if __name__ == '__main__':
     cfg.USE_GPU_NMS = True
     imdb, roidb, ratio_list, ratio_index = combined_roidb(args.imdb_name)
 
-    if not args.fewshot:
-        dataset = OracleLoader(roidb, ratio_list, ratio_index, args.batch_size, \
-                            imdb.num_classes, training=True)
-    elif args.finetune:
-        CWD = os.getcwd()
-        support_dir = os.path.join(CWD, 'data/supports', args.support_dir)
-        dataset = FinetuneLoader(imdb, roidb, ratio_list, ratio_index, args.batch_size, \
-                            imdb.num_classes, support_dir, training=True, num_shot=args.shot)
-    else:
-        dataset = FewShotLoader(roidb, ratio_list, ratio_index, args.batch_size, \
-                            imdb.num_classes, training=True, num_way=args.way, num_shot=args.shot)
+    support_dir = os.path.join(CWD, 'data/supports', args.sup_dir)
+    dataset = FinetuneLoader(imdb, roidb, ratio_list, ratio_index, args.batch_size, \
+                        imdb.num_classes, support_dir, training=True, num_shot=args.shot)
+
     train_size = len(roidb)
     print('{:d} roidb entries'.format(len(roidb)))
     sampler_batch = sampler(train_size, args.batch_size)

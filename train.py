@@ -58,7 +58,7 @@ if __name__ == '__main__':
                             imdb.num_classes, training=True)
     elif args.finetune:
         CWD = os.getcwd()
-        support_dir = os.path.join(CWD, 'data/supports', args.support_dir)
+        support_dir = os.path.join(CWD, 'data/supports', args.sup_dir)
         dataset = FinetuneLoader(imdb, roidb, ratio_list, ratio_index, args.batch_size, \
                             imdb.num_classes, support_dir, training=True, num_shot=args.shot)
     else:
@@ -83,6 +83,7 @@ if __name__ == '__main__':
     pre_weight = False if args.finetune or args.resume else True
     classes = imdb.classes if not args.fewshot else ['fg', 'bg']
     model = get_model(args.net, pretrained=pre_weight, way=args.way, shot=args.shot, classes=classes)
+    model.cuda()
 
     # optimizer
     lr = cfg.TRAIN.LEARNING_RATE

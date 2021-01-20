@@ -68,20 +68,21 @@ if __name__ == '__main__':
     gt_boxes = holders[3]
 
     # initilize the network
-    model = get_model('frcnn', pretrained=False, way=0, shot=0, eval=False, classes=list(range(args.old_n_classes)))
+    model = get_model('frcnn', pretrained=False, way=0, shot=0, classes=list(range(args.old_n_classes)))
 
     # load checkpoints 
     load_dir = os.path.join(args.load_dir, "train/checkpoints")
     load_name = os.path.join(load_dir, f'model_{args.checkepoch}_{args.checkpoint}.pth')
     checkpoint = torch.load(load_name)
-    args.start_epoch = checkpoint['epoch']
     model.load_state_dict(checkpoint['model'])
     if 'pooling_mode' in checkpoint.keys():
         cfg.POOLING_MODE = checkpoint['pooling_mode']
     print(f'loaded checkpoint: {load_name}')
 
-    # optimizer
     model.finetune(len(imdb.classes))
+    model.cuda()
+
+    # optimizer
     lr = args.lr
     params = []
     for key, value in dict(model.named_parameters()).items():
