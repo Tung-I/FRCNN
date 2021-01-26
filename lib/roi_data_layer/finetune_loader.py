@@ -66,9 +66,11 @@ class FinetuneLoader(data.Dataset):
             support_im_paths = sorted([str(_p) for _p in list(Path(cls_dir).glob('*.jpg'))])
             if len(support_im_paths) == 0:
                 raise Exception(f'support data not found in {cls_dir}')
+
             # random.seed(0)  # fix the shots
             # support_im_paths = random.sample(support_im_paths, k=self.support_shot)
             support_im_paths = support_im_paths[:num_shot]
+            
             self.support_pool[_label].extend(support_im_paths)
 
 

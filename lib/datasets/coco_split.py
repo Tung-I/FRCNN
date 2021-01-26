@@ -76,6 +76,8 @@ class coco_split(imdb):
       return osp.join(self._data_path, 'annotations', 'coco60_train', 'instances_' + self._year + '.json')
     elif self._image_set == 'vis':
       return osp.join(self._data_path, 'annotations', 'coco20_vis', 'instances_' + self._year + '.json')
+    elif self._image_set == 'shot':
+      return osp.join(self._data_path, 'annotations', 'ft', 'instances_shot30.json')
     else:
       raise Exception(f'set not defined {self._image_set}')
 
@@ -125,6 +127,11 @@ class coco_split(imdb):
       image_path = osp.join(self._data_path, 'images',
                             'train2014', file_name)
     elif self._image_set == 'vis':
+      file_name = ('COCO_' + 'train2014' + '_' +
+                  str(index).zfill(12) + '.jpg')
+      image_path = osp.join(self._data_path, 'images',
+                            'train2014', file_name)
+    elif self._image_set == 'shot':
       file_name = ('COCO_' + 'train2014' + '_' +
                   str(index).zfill(12) + '.jpg')
       image_path = osp.join(self._data_path, 'images',

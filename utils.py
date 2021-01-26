@@ -1,6 +1,16 @@
 import argparse
 import torch
 import cv2
+import os
+import numpy as np
+import json
+from tqdm import tqdm
+from pathlib import Path
+from PIL import Image
+from roi_data_layer.minibatch import get_minibatch, get_minibatch
+from model.rpn.bbox_transform import bbox_transform_inv, clip_boxes
+from model.utils.blob import prep_im_for_blob, im_list_to_blob
+from model.roi_layers import nms
 from model.utils.config import cfg
 from torch.autograd import Variable
 from model.framework.faster_rcnn import FasterRCNN
@@ -9,7 +19,6 @@ from model.framework.meta import METARCNN
 from model.framework.fgn import FGN
 from model.framework.dana import DAnARCNN
 from model.framework.cisa import CISARCNN
-from model.roi_layers import nms
 from pycocotools.coco import COCO
 
 
@@ -22,7 +31,7 @@ def parse_args():
     # optimizer
     parser.add_argument('--o', dest='optimizer', help='training optimizer', default="sgd", type=str)
     parser.add_argument('--lr', dest='lr', help='starting learning rate', default=0.001, type=float)
-    parser.add_argument('--lr_decay_step', dest='lr_decay_step', help='step to do learning rate decay, unit is epoch', default=5, type=int)
+    parser.add_argument('--lr_decay_step', dest='lr_decay_step', help='step to do learning rate decay, unit is epoch', default=1000, type=int)
     parser.add_argument('--lr_decay_gamma', dest='lr_decay_gamma', help='learning rate decay ratio', default=0.1, type=float)
     # train&finetuning setting
     parser.add_argument('--nw', dest='num_workers', help='number of worker to load data', default=8, type=int)
@@ -34,7 +43,7 @@ def parse_args():
     parser.add_argument('--disp_interval', dest='disp_interval', help='number of iterations to display', default=100, type=int)
     parser.add_argument('--save_dir', dest='save_dir', help='directory to save models', default="models", type=str)
     parser.add_argument('--ascale', dest='ascale', help='number of anchor scale', default=4, type=int)
-    parser.add_argument('--ft', dest='finetune', help='finetune mode', default=False, action='store_true')
+    # parser.add_argument('--ft', dest='finetune', help='finetune mode', default=False, action='store_true')
     parser.add_argument('--eval', dest='eval', help='evaluation mode', default=False, action='store_true')
     parser.add_argument('--onc', dest='old_n_classes', help='number of classes of the source domain', default=81, type=int)
     # inference setting
@@ -42,6 +51,7 @@ def parse_args():
     # multi-stage
     parser.add_argument('--pred_dir', dest='pred_dir', help='directory to output predictions', default=None, type=str)
     parser.add_argument('--thres', dest='thres', help='threshold of score', default=0.5, type=float)
+    parser.add_argument('--ori_model', dest='ori_model', help='well-trained model path', default=None, type=str)
     # few shot
     parser.add_argument('--fs', dest='fewshot', help='few-shot setting', default=False, action='store_true')
     parser.add_argument('--way', dest='way', help='num of support way', default=2, type=int)
@@ -80,6 +90,8 @@ def parse_args():
         args.imdbval_name = "coco_2014_minival"
     elif args.dataset == "set1":
         args.imdb_name = "coco_60_set1"
+    elif args.dataset == "coco_ft":
+        args.imdb_name = "coco_ft"
     elif args.dataset == "0712":
         args.imdb_name = "voc_2007_trainval+voc_2012_trainval"
         args.imdbval_name = "voc_2007_test"
@@ -89,10 +101,19 @@ def parse_args():
         args.imdbval_name = "coco_20_set2"
     elif args.dataset == "ycb2d_ft":
         args.imdb_name = "ycb2d_finetune"
-    elif args.dataset == "ycb2d_pseudo":
-        args.imdb_name = "ycb2d_pseudo"
+        args.imdbval_name = "ycb2d_finetune"
     elif args.dataset == 'ycb2d':
         args.imdbval_name = "ycb2d_inference"
+    elif args.dataset == "pseudo1":
+        args.imdb_name = "ycb2d_pseudo1"
+    elif args.dataset == "pseudo2":
+        args.imdb_name = "ycb2d_pseudo2"
+    elif args.dataset == "pseudo3":
+        args.imdb_name = "ycb2d_pseudo3"
+    elif args.dataset == "pseudo4":
+        args.imdb_name = "ycb2d_pseudo4"
+    elif args.dataset == "pseudo5":
+        args.imdb_name = "ycb2d_pseudo5"
     else:
         raise Exception(f'dataset {args.dataset} not defined')
     args.cfg_file = "cfgs/res50.yml"

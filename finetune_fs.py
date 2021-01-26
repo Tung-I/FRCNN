@@ -10,28 +10,28 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 from tqdm import tqdm
+
 from roi_data_layer.roidb import combined_roidb
 from roi_data_layer.fs_loader import FewShotLoader, sampler
 from roi_data_layer.oracle_loader import OracleLoader
 from roi_data_layer.finetune_loader import FinetuneLoader
+
 from model.utils.config import cfg, cfg_from_file, cfg_from_list, get_output_dir
 from model.utils.net_utils import weights_normal_init, save_net, load_net, \
       adjust_learning_rate, save_checkpoint, clip_gradient
+
 from model.utils.fsod_logger import FSODLogger
+
 from utils import *
-from pycocotools.coco import COCO
+
 
 CWD = os.getcwd()
-
-cls_names = ['cube', 'can', 'box', 'bottle']
-ann_dir = '/home/tony/YCB_simulation/query/ndarray'
-cls_im_inds = [list(range(1000, 1020)), list(range(1020, 1040)), list(range(1040, 1060)), list(range(1060, 1080))]
-dump_path = '/home/tony/datasets/YCB2D/annotations/instances_pseudo20.json'
 
 if __name__ == '__main__':
 
     args = parse_args()
     print(args)
+
     cfg_from_file(args.cfg_file)
     cfg_from_list(args.set_cfgs)
 
@@ -58,7 +58,9 @@ if __name__ == '__main__':
     support_dir = os.path.join(CWD, 'data/supports', args.sup_dir)
     dataset = FinetuneLoader(imdb, roidb, ratio_list, ratio_index, args.batch_size, \
                         imdb.num_classes, support_dir, training=True, num_shot=args.shot)
-
+    # dataset = FewShotLoader(roidb, ratio_list, ratio_index, args.batch_size, \
+    #                         imdb.num_classes, training=True, num_way=args.way, num_shot=args.shot)
+    
     train_size = len(roidb)
     print('{:d} roidb entries'.format(len(roidb)))
     sampler_batch = sampler(train_size, args.batch_size)
@@ -66,21 +68,29 @@ if __name__ == '__main__':
                             sampler=sampler_batch, num_workers=args.num_workers)
 
     # initilize the tensor holders
-    holders = prepare_var(support=args.fewshot)
+    holders = prepare_var(support=True)
     im_data = holders[0]
     im_info = holders[1]
     num_boxes = holders[2]
     gt_boxes = holders[3]
-    if args.fewshot:
-        support_ims = holders[4]
+    support_ims = holders[4]
 
     # initilize the network
-    pre_weight = False if args.finetune or args.resume else True
-    classes = imdb.classes if not args.fewshot else ['fg', 'bg']
-    model = get_model(args.net, pretrained=pre_weight, way=args.way, shot=args.shot, eval=False, classes=classes)
+    model = get_model(args.net, pretrained=False, way=args.way, shot=args.shot, classes=['bg', 'fg'])
+
+    # load checkpoints 
+    load_dir = os.path.join(args.load_dir, "train/checkpoints")
+    load_name = os.path.join(load_dir, f'model_{args.checkepoch}_{args.checkpoint}.pth')
+    checkpoint = torch.load(load_name)
+    model.load_state_dict(checkpoint['model'])
+    if 'pooling_mode' in checkpoint.keys():
+        cfg.POOLING_MODE = checkpoint['pooling_mode']
+    print(f'loaded checkpoint: {load_name}')
+
+    # model.finetune()
+    model.cuda()
 
     # optimizer
-    lr = cfg.TRAIN.LEARNING_RATE
     lr = args.lr
     params = []
     for key, value in dict(model.named_parameters()).items():
@@ -94,19 +104,6 @@ if __name__ == '__main__':
         optimizer = torch.optim.Adam(params)
     elif args.optimizer == "sgd":
         optimizer = torch.optim.SGD(params, momentum=cfg.TRAIN.MOMENTUM)
-
-    # load checkpoints 
-    if args.resume:
-        load_dir = os.path.join(args.load_dir, "train/checkpoints")
-        load_name = os.path.join(load_dir, f'model_{args.checkepoch}_{args.checkpoint}.pth')
-        checkpoint = torch.load(load_name)
-        args.start_epoch = checkpoint['epoch']
-        model.load_state_dict(checkpoint['model'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        lr = optimizer.param_groups[0]['lr']
-        if 'pooling_mode' in checkpoint.keys():
-            cfg.POOLING_MODE = checkpoint['pooling_mode']
-        print(f'loaded checkpoint: {load_name}')
 
     if args.mGPUs:
         model = nn.DataParallel(model)
@@ -133,21 +130,14 @@ if __name__ == '__main__':
                 im_info.resize_(data[1].size()).copy_(data[1])
                 gt_boxes.resize_(data[2].size()).copy_(data[2])
                 num_boxes.resize_(data[3].size()).copy_(data[3])
-                if args.fewshot:
-                    support_ims.resize_(data[4].size()).copy_(data[4])
+                support_ims.resize_(data[4].size()).copy_(data[4])
 
             model.zero_grad()
 
-            if args.fewshot:
-                rois, cls_prob, bbox_pred, \
-                rpn_loss_cls, rpn_loss_box, \
-                RCNN_loss_cls, RCNN_loss_bbox, \
-                rois_label = model(im_data, im_info, gt_boxes, num_boxes, support_ims)
-            else:
-                rois, cls_prob, bbox_pred, \
-                rpn_loss_cls, rpn_loss_box, \
-                RCNN_loss_cls, RCNN_loss_bbox, \
-                rois_label = model(im_data, im_info, gt_boxes, num_boxes)
+            rois, cls_prob, bbox_pred, \
+            rpn_loss_cls, rpn_loss_box, \
+            RCNN_loss_cls, RCNN_loss_bbox, \
+            rois_label = model(im_data, im_info, gt_boxes, num_boxes, support_ims)
 
             loss = rpn_loss_cls.mean() + rpn_loss_box.mean() \
                 + RCNN_loss_cls.mean() + RCNN_loss_bbox.mean()
@@ -192,7 +182,7 @@ if __name__ == '__main__':
                 loss_temp = 0
                 start_time = time.time()
         if not args.dlog:
-            tb_logger.write(epoch, info, save_im=args.imlog)
+            tb_logger.write(epoch, info, query=im_data, support=support_ims, boxes=gt_boxes, save_im=args.imlog)
 
         save_name = os.path.join(output_dir, 'model_{}_{}.pth'.format(epoch, step))
         save_checkpoint({
@@ -202,5 +192,3 @@ if __name__ == '__main__':
             'pooling_mode': cfg.POOLING_MODE,
         }, save_name)
         print('save model: {}'.format(save_name))
-
-

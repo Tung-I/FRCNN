@@ -15,8 +15,12 @@ name = 'ycb2d_inference'
 __sets[name] = (lambda split='inference', year='50': ycb2d(split, year))
 name = 'ycb2d_finetune'
 __sets[name] = (lambda split='finetune', year='20': ycb2d(split, year))
-name = 'ycb2d_psudo'
-__sets[name] = (lambda split='pseudo', year='20': ycb2d(split, year))
+
+name = 'ycb2d_pseudo'
+for i in range(1, 6):
+  __sets[name+str(i)] = (lambda split='pseudo', year=str(i): ycb2d(split, year))
+
+__sets['coco_ft'] = (lambda split='shot', year='10': coco_split(split, year))
 
 # coco 20 evaluation
 for year in ['set1', 'set2']:
