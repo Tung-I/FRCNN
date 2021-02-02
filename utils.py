@@ -49,7 +49,9 @@ def parse_args():
     # inference setting
     parser.add_argument('--eval_dir', dest='eval_dir', help='output directory of evaluation', default=None, type=str)
     # multi-stage
+    parser.add_argument('--stage', dest='stage', help='current stage', default=None, type=int)
     parser.add_argument('--pred_dir', dest='pred_dir', help='directory to output predictions', default=None, type=str)
+    parser.add_argument('--emb_shot', dest='emb_shot', help='number of shots for embedding', default=1, type=int)
     parser.add_argument('--thres', dest='thres', help='threshold of score', default=0.5, type=float)
     parser.add_argument('--ori_model', dest='ori_model', help='well-trained model path', default=None, type=str)
     # few shot
@@ -99,21 +101,44 @@ def parse_args():
         args.imdbval_name = "coco_20_set1"
     elif args.dataset == "val2014_base":
         args.imdbval_name = "coco_20_set2"
-    elif args.dataset == "ycb2d_ft":
-        args.imdb_name = "ycb2d_finetune"
-        args.imdbval_name = "ycb2d_finetune"
-    elif args.dataset == 'ycb2d':
+
+    elif args.dataset == "ycb2d_replace96":
+        args.imdb_name = "ycb2d_replace96"
+    elif args.dataset == "ycb2d_replace80":
+        args.imdb_name = "ycb2d_replace80"
+    elif args.dataset == "ycb2d_replace64":
+        args.imdb_name = "ycb2d_replace64"
+    elif args.dataset == "ycb2d_replace48":
+        args.imdb_name = "ycb2d_replace48"
+    elif args.dataset == "ycb2d_replace32":
+        args.imdb_name = "ycb2d_replace32"
+    elif args.dataset == "ycb2d_replace16":
+        args.imdb_name = "ycb2d_replace16"
+
+    elif 'ycb2d_stage' in args.dataset:
+        args.imdb_name = args.dataset
+
+    elif args.dataset == "ycb2d_replace64c1":
+        args.imdb_name = "ycb2d_replace64c1"
+    elif args.dataset == "ycb2d_replace64c2":
+        args.imdb_name = "ycb2d_replace64c2"
+    elif args.dataset == "ycb2d_replace64c3":
+        args.imdb_name = "ycb2d_replace64c3"
+    elif args.dataset == "ycb2d_replace64c4":
+        args.imdb_name = "ycb2d_replace64c4"
+
+    elif 'ycb2d_oracle' in args.dataset:
+        args.imdb_name = args.dataset
+
+    elif args.dataset == 'ycb2d_test':
         args.imdbval_name = "ycb2d_inference"
-    elif args.dataset == "pseudo1":
-        args.imdb_name = "ycb2d_pseudo1"
-    elif args.dataset == "pseudo2":
-        args.imdb_name = "ycb2d_pseudo2"
-    elif args.dataset == "pseudo3":
-        args.imdb_name = "ycb2d_pseudo3"
-    elif args.dataset == "pseudo4":
-        args.imdb_name = "ycb2d_pseudo4"
-    elif args.dataset == "pseudo5":
-        args.imdb_name = "ycb2d_pseudo5"
+    elif args.dataset == 'ycb2d_testfs':
+        args.imdbval_name = "ycb2d_inferencefs"
+    elif args.dataset == 'ycb2d_test_dense':
+        args.imdbval_name = "ycb2d_inference_dense"
+    elif args.dataset == 'ycb2d_testfs_dense':
+        args.imdbval_name = "ycb2d_inferencefs_dense"
+
     else:
         raise Exception(f'dataset {args.dataset} not defined')
     args.cfg_file = "cfgs/res50.yml"
@@ -140,9 +165,7 @@ def get_model(name, pretrained=True, way=2, shot=3, classes=[]):
         
 
 def create_annotation(nd_dir, cls_names, cls_im_inds, dump_path):
-    clsname2ind = {}
-    for i, name in enumerate(cls_names):
-        clsname2ind[name] = i
+    clsname2ind = {'cube':1, 'can':2, 'box':3, 'bottle':4}
     data_categories = []
     for name in cls_names:   
         dic = {}
@@ -150,7 +173,6 @@ def create_annotation(nd_dir, cls_names, cls_im_inds, dump_path):
         dic['id'] = clsname2ind[name]
         dic['name'] = name
         data_categories.append(dic)
-    ann_cnt = 0
     data_images = []
     data_annotations = []
     for cls, inds in zip(cls_names, cls_im_inds):
@@ -177,13 +199,13 @@ def create_annotation(nd_dir, cls_names, cls_im_inds, dump_path):
                 dic['image_id'] = ind
                 dic['bbox'] = [int(box[0]), int(box[1]), int(box[2]) - int(box[0]), int(box[3]) - int(box[1])]
                 dic['category_id'] = clsname2ind[cls]
-                dic['id'] = ann_cnt
-                ann_cnt += 1
+                dic['id'] = int(str(ind)+str(j))
                 data_annotations.append(dic)
 
     coco_json_path = '/home/tony/datasets/coco/annotations/instances_minival2014.json'
     with open(coco_json_path, 'r') as f:
         data = json.load(f)
+   
     new_dict = {}
     new_dict['info'] = data['info']
     new_dict['images'] = data_images

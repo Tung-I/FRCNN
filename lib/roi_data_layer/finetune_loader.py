@@ -68,11 +68,10 @@ class FinetuneLoader(data.Dataset):
                 raise Exception(f'support data not found in {cls_dir}')
 
             # random.seed(0)  # fix the shots
-            # support_im_paths = random.sample(support_im_paths, k=self.support_shot)
-            support_im_paths = support_im_paths[:num_shot]
+            # support_im_paths = random.sample(support_im_paths, k=self.support_shot)  
+            # support_im_paths = support_im_paths[:num_shot]
             
             self.support_pool[_label].extend(support_im_paths)
-
 
     def __getitem__(self, index):
         ##############################
@@ -106,7 +105,8 @@ class FinetuneLoader(data.Dataset):
         cls_in_query = list(set(cls_in_query))
         pos_cls_idx = int(random.sample(cls_in_query, k=1)[0])
 
-        selected_supports = self.support_pool[pos_cls_idx]
+        # selected_supports = self.support_pool[pos_cls_idx]
+        selected_supports  = random.sample(self.support_pool[pos_cls_idx], k=self.support_shot)
         for i, _path in enumerate(selected_supports):
             support_im = imread(_path)[:,:,::-1]  # rgb -> bgr
             target_size = np.min(support_im.shape[0:2])  # don't change the size
@@ -128,7 +128,8 @@ class FinetuneLoader(data.Dataset):
             if cls_id not in cls_in_query:
                 neg_cls.append(cls_id)
         neg_cls_idx = random.sample(neg_cls, k=1)[0]
-        selected_supports = self.support_pool[neg_cls_idx]
+        # selected_supports = self.support_pool[neg_cls_idx]
+        selected_supports  = random.sample(self.support_pool[neg_cls_idx], k=self.support_shot)
         for i, _path in enumerate(selected_supports):
             support_im = imread(_path)[:,:,::-1]  # rgb -> bgr
             target_size = np.min(support_im.shape[0:2])  # don't change the size

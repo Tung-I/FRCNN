@@ -11,13 +11,34 @@ from datasets.vg import vg
 from datasets.episode import episode
 from datasets.ycb2d import ycb2d
 
+for i in [96, 80, 64, 48, 32, 16]:
+  name = f'ycb2d_replace{i}'
+  __sets[name] = (lambda split='replace', year=str(i): ycb2d(split, year))
+
 name = 'ycb2d_inference'
-__sets[name] = (lambda split='inference', year='50': ycb2d(split, year))
-name = 'ycb2d_finetune'
-__sets[name] = (lambda split='finetune', year='20': ycb2d(split, year))
+__sets[name] = (lambda split='inference', year='1234': ycb2d(split, year))
+name = 'ycb2d_inferencefs'
+__sets[name] = (lambda split='inferencefs', year='1234': ycb2d(split, year))
+name = 'ycb2d_inference_dense'
+__sets[name] = (lambda split='inference', year='dense': ycb2d(split, year))
+name = 'ycb2d_inferencefs_dense'
+__sets[name] = (lambda split='inferencefs', year='dense': ycb2d(split, year))
+name = 'ycb2d_inference'
+__sets[name] = (lambda split='inference', year='1234': ycb2d(split, year))
+
+for i in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
+  name = f'ycb2d_stage{i}'
+  __sets[name] = (lambda split='stage', year=str(i): ycb2d(split, year))
+
+for i in [256, 128, 64, 32, 16, 8]:
+  name = f'ycb2d_oracle{i}'
+  __sets[name] = (lambda split='oracle', year=str(i): ycb2d(split, year))
+for i in [64, 16]:
+  name = f'ycb2d_oracle_dense{i}'
+  __sets[name] = (lambda split='oracledense', year=str(i): ycb2d(split, year))
 
 name = 'ycb2d_pseudo'
-for i in range(1, 6):
+for i in range(1, 7):
   __sets[name+str(i)] = (lambda split='pseudo', year=str(i): ycb2d(split, year))
 
 __sets['coco_ft'] = (lambda split='shot', year='10': coco_split(split, year))

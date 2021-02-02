@@ -164,6 +164,7 @@ if __name__ == '__main__':
                 
         misc_toc = time.time()
         nms_time = misc_toc - misc_tic
+
         # if args.imlog:
         #     origin_im = im_data[0].permute(1, 2, 0).contiguous().cpu().numpy()[:, :, ::-1]
         #     origin_im = origin_im - origin_im.min()
@@ -175,6 +176,11 @@ if __name__ == '__main__':
         #         box = np_gt_boxes[n].clone()
         #         cv2.rectangle(gt_im, (box[0], box[1]), (box[2], box[3]), (0.1, 1, 0.1), 2)
         #     plt.imshow(gt_im)
+        #     plt.show()
+        #     sup_im = support_ims[0][0].permute(1, 2, 0).contiguous().cpu().numpy()[:, :, ::-1]
+        #     sup_im = sup_im - sup_im.min()
+        #     sup_im /= sup_im.max()
+        #     plt.imshow(sup_im)
         #     plt.show()
         #     raise Exception(' ')
 

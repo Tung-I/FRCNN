@@ -373,44 +373,28 @@ class CISARCNN(_CISARCNN):
         return fc7
 
     def finetune(self):
-        # for param in self.parameters():
-        #     param.requires_grad = False
-        # for param in self.output_score_layer.parameters():
-        #     param.requires_grad = True
-        # for param in self.RCNN_bbox_pred.parameters():
-        #     param.requires_grad = True
-
-        # dim_in = self.pool_feat_dim
-        # rpn_reduce_dim = self.rpn_reduce_dim
-        # rcnn_reduce_dim = self.rcnn_reduce_dim
-        # self.rpn_unary_layer = nn.Linear(dim_in, 1)
-        # init.normal_(self.rpn_unary_layer.weight, std=0.01)
-        # init.constant_(self.rpn_unary_layer.bias, 0)
-        # self.rcnn_unary_layer = nn.Linear(dim_in, 1)
-        # init.normal_(self.rcnn_unary_layer.weight, std=0.01)
-        # init.constant_(self.rcnn_unary_layer.bias, 0)
-
-        # self.rpn_adapt_q_layer = nn.Linear(dim_in, rpn_reduce_dim)
-        # init.normal_(self.rpn_adapt_q_layer.weight, std=0.01)
-        # init.constant_(self.rpn_adapt_q_layer.bias, 0)
-        # self.rpn_adapt_k_layer = nn.Linear(dim_in, rpn_reduce_dim)
-        # init.normal_(self.rpn_adapt_k_layer.weight, std=0.01)
-        # init.constant_(self.rpn_adapt_k_layer.bias, 0)
-
-        # self.rcnn_adapt_q_layer = nn.Linear(dim_in, rcnn_reduce_dim)
-        # init.normal_(self.rcnn_adapt_q_layer.weight, std=0.01)
-        # init.constant_(self.rcnn_adapt_q_layer.bias, 0)
-        # self.rcnn_adapt_k_layer = nn.Linear(dim_in, rcnn_reduce_dim)
-        # init.normal_(self.rcnn_adapt_k_layer.weight, std=0.01)
-        # init.constant_(self.rcnn_adapt_k_layer.bias, 0)
+        for param in self.parameters():
+            param.requires_grad = False
+        self.output_score_layer = nn.Linear(64* 49, 2)
+        self.RCNN_bbox_pred = nn.Linear(2048, 4)
+        self.RCNN_bbox_pred.weight.data.normal_(0, 0.001)
+        self.RCNN_bbox_pred.bias.data.zero_()
+        self.output_score_layer.weight.data.normal_(0, 0.01)
+        self.output_score_layer.bias.data.zero_()
+        for param in self.output_score_layer.parameters():
+            param.requires_grad = True
+        for param in self.RCNN_bbox_pred.parameters():
+            param.requires_grad = True
 
         for param in self.rpn_unary_layer.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
+        for param in self.rcnn_unary_layer.parameters():
+            param.requires_grad = True
         for param in self.rpn_adapt_q_layer.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
         for param in self.rpn_adapt_k_layer.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
         for param in self.rcnn_adapt_q_layer.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
         for param in self.rcnn_adapt_k_layer.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
